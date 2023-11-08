@@ -16,7 +16,7 @@ Brep2Seq, a deep neural network that directly takes the B-rep data of 3D CAD mod
 git clone https://github.com/zhangshuming0668/Brep2Seq.git
 cd Brep2Seq
 conda env create -f environment.yml
-conda activate brepnet
+conda activate brep2seq
 ```
 
 ### Data preparation
