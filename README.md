@@ -6,7 +6,7 @@ This code for the paper: Brep2Seq: A Dataset and Hierarchical Deep Learning Netw
 
 ## About Brep2Seq
 
-Brep2Seq, a deep neural network that directly takes the B-rep data of 3D CAD models as input, inspired by the Transformer network (Vaswani et al., 2017, ) and its adaptation to graph-structured data, known as Graphformer (Ying et al., 2021). This network can encode the B-rep data into a latent space and decode a sequence of CAD feature modeling operations. The sequence comprises two types of modeling operations: one for assembling basic geometric primitives (e.g., cuboid, prism, cylinder, cone, and sphere) to form the primary shape of the CAD model, and another for common mechanical features (e.g., hole, groove, fillet, and chamfer). 
+Brep2Seq, a deep neural network that directly takes the B-rep data of 3D CAD models as input, inspired by the Transformer network and its adaptation to graph-structured data, known as Graphformer. This network can encode the B-rep data into a latent space and decode a sequence of CAD feature modeling operations. The sequence comprises two types of modeling operations: one for assembling basic geometric primitives (e.g., cuboid, prism, cylinder, cone, and sphere) to form the primary shape of the CAD model, and another for common mechanical features (e.g., hole, groove, fillet, and chamfer). 
 
 ## Preparation
 
