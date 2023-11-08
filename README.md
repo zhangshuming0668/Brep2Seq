@@ -21,7 +21,7 @@ conda activate brepnet
 
 ### Data preparation
 
-You can download the synthetic CAD models dataset from [this link] (https://fusion-360-gallery-dataset.s3-us-west-2.amazonaws.com/segmentation/s2.0.0/s2.0.0.zip).
+You can download the synthetic CAD models dataset from [this link](https://github.com/zhangshuming0668/Brep2Seq/tree/main/dataset).
 
 ## Training
 

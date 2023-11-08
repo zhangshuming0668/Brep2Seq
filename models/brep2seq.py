@@ -101,7 +101,6 @@ class BreptoSeq(pl.LightningModule):
         _, z_f = self.feature_encoder(batch)
         z = z_p + z_f
         output = self.seq_decoder(z)
-        print(z.size())
 
         # Loss recons
         loss_primitive = self.loss_func_primitive(output, batch["label_commands_primitive"], batch["label_args_primitive"], self.loss_func_weights)

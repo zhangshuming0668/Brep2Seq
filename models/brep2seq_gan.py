@@ -132,7 +132,7 @@ class GAN(pl.LightningModule):
             commands_feature = commands_feature.long().detach().cpu().numpy()  # (N, S)
             args_feature = args_feature.long().detach().cpu().numpy()  # (N, S, n_args)
 
-            # 将结果转为json文件--------------------------------------------------------------------------
+            # output json files--------------------------------------------------------------------------
             for i in range(batch_size):
                 end_pos = MAX_N_MAIN - np.sum((commands_primitive[i][:] == EOS_IDX).astype(np.int))
                 primitive_type = commands_primitive[i][:end_pos + 1]  # (Seq)
@@ -144,7 +144,7 @@ class GAN(pl.LightningModule):
 
                 file_name = "generation_{}.json".format(str(batch_size * batch_index + i))
                 file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                         "results/predicted_seq")
+                                         "results/generated_seq")
                 if not os.path.exists(file_path): os.makedirs(file_path)
                 vec_to_json(primitive_type, primitive_param, feature_type, feature_param,
                             os.path.join(file_path, file_name))

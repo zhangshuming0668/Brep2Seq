@@ -190,7 +190,7 @@ class BrepEncoder(nn.Module):
                                         batch_data["in_degree"], 
                                         batch_data["out_degree"], 
                                         batch_data["padding_mask"])  
-            # x[n_graph, max_node, embedding_dim] 每个节点均嵌入到长度embedding_dim的向量
+            # x[n_graph, max_node, embedding_dim]
 
         if perturb is not None:
             x[:, 1:, :] += perturb
@@ -211,7 +211,7 @@ class BrepEncoder(nn.Module):
             n_graph, 1, device=padding_mask.device, dtype=padding_mask.dtype
         )
         padding_mask = torch.cat((padding_mask_cls, padding_mask), dim=1)
-        # B x (T+1) 比data_x多了一个节点，这是全局的虚拟节点 padding_mask中等于True的位置标示该位置masked
+        # B x (T+1)
 
         if self.embed_scale is not None:
             x = x * self.embed_scale
@@ -220,7 +220,7 @@ class BrepEncoder(nn.Module):
             x = self.quant_noise(x)
 
         if self.emb_layer_norm is not None:
-            x = self.emb_layer_norm(x)  #类似torch.nn.LayerNorm(embedding_dim)  x [batch_size, max_node, embedding_dim]
+            x = self.emb_layer_norm(x)  #torch.nn.LayerNorm(embedding_dim)  x [batch_size, max_node, embedding_dim]
 
         x = self.dropout_module(x)
         # account for padding while computing the representation
