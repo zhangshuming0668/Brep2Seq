@@ -1,7 +1,0 @@
-torch==1.13.1
-pytorch_lightning==1.7.1
-dgl==1.0.0+cu117
-torch_geometric==2.2.0
-fairseq==0.10.2
-numpy==1.23.5
-tqdm==4.64.1
