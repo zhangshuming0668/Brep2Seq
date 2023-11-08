@@ -95,8 +95,7 @@ SUB_CMD_ARGS_MASK = np.array([[ *[0]*N_ARGS_SUB],  # SOL
 
 MAX_N_MAIN = 10 # maximum number of main_feature
 MAX_N_SUB = 12  # maximum number of sub_feature
-# MAX_TOTAL_LEN = 15 # maximum cad sequence length
-ARGS_DIM = 258 #-1-256  最大维度是258
+ARGS_DIM = 258  #-1-256
 
 N_ALL_SAMPLE = 1000
 N_PART_SAMPLE = 210

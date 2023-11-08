@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
+import os
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 import torch.autograd as autograd
-import numpy as np
 
-from modules.latentGAN import Generator, Discriminator
-from brep2seq import BreptoSeq
-from modules.module_utils.macro import *
-from modules.module_utils.vec2json import vec_to_json
+from .brep2seq import BreptoSeq
+from .modules.latentGAN import Generator, Discriminator
+from .modules.module_utils.macro import *
+from .modules.module_utils.vec2json import vec_to_json
 
 class GAN(pl.LightningModule):
     def __init__(self, args):
@@ -19,13 +19,15 @@ class GAN(pl.LightningModule):
         self.dim_n = args.dim_n
         self.gp_lambda = 10
 
-        brep_seq_model = BreptoSeq.load_from_checkpoint(args.checkpoint)
-        self.main_encoderdecoder = brep_seq_model.main_encoderdecoder
-        self.sub_encoderdecoder = brep_seq_model.sub_encoderdecoder
+        brep_seq_model = BreptoSeq.load_from_checkpoint(args.pretrained)
+        self.primitive_encoder = brep_seq_model.primitive_encoder
+        self.feature_encoder = brep_seq_model.feature_encoder
+        self.seq_decoder = brep_seq_model.seq_decoder
 
-        self.generator = Generator(args.dim_n, args.dim_h, args.dim_z)
-        self.discriminator = Discriminator(args.dim_h, args.dim_z*2)
+        self.generator = Generator(args.dim_n, 1024, args.dim_z)
+        self.discriminator = Discriminator(1024, args.dim_z)
         self.adversarial_loss = F.binary_cross_entropy
+
 
     def calc_gradient_penalty(self, netD, real_z, fake_z):
         alpha = torch.rand([self.batch_size, 1], device=real_z.device)
@@ -44,175 +46,105 @@ class GAN(pl.LightningModule):
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * self.gp_lambda # LAMBDA
         return gradient_penalty
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
-        self.main_encoderdecoder.eval()
-        self.sub_encoderdecoder.eval()
 
-        # train discriminator
+    def training_step(self, batch, batch_idx, optimizer_idx):
+        self.primitive_encoder.eval()
+        self.feature_encoder.eval()
+        self.seq_decoder.eval()
+
+        # step 1. train discriminator
         if optimizer_idx == 0:
-            # A ---------------------------------------------------------
             self.generator.eval()
             self.discriminator.train()
-            #---------------------------------------------------------
             # generate real z
-            logits_sub = self.sub_encoderdecoder(batch)
-            z_sub_real = logits_sub["tgt_z"]
-            logits_main = self.main_encoderdecoder(batch)
-            z_main_real = logits_main["tgt_z"]
-            z_real = torch.cat([z_main_real, z_sub_real], dim=1).detach()
+            _, z_p_real = self.primitive_encoder(batch)
+            _, z_f_real = self.feature_encoder(batch)
+            z_real = (z_p_real+z_f_real).detach()
             # how well can it label as real?
             mone = -1 * torch.ones([1], device=batch["node_data"].device)
             logits_real = self.discriminator(z_real)
             logits_real = logits_real.mean(dim=0, keepdim=True)
             real_loss = logits_real * mone
 
-            #---------------------------------------------------------
             # generate fake z
             one = torch.ones([1], device=batch["node_data"].device)
-            # n = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
-            # generated_z = self.generator(n).detach()
             n_1 = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
             n_2 = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
-            generated_z = self.generator(n_1, n_2).detach()
-
-            logits_fake = self.discriminator(generated_z)
+            z_fake = self.generator(n_1, n_2).detach()
+            logits_fake = self.discriminator(z_fake)
             logits_fake = logits_fake.mean(dim=0, keepdim=True)
             fake_loss = logits_fake * one
-            #---------------------------------------------------------
-            gradient_penalty = self.calc_gradient_penalty(self.discriminator, z_real, generated_z)
+            gradient_penalty = self.calc_gradient_penalty(self.discriminator, z_real, z_fake)
 
             Wasserstein_D = logits_real - logits_fake
             self.log("Wasserstein_D", Wasserstein_D, prog_bar=False)
-
             d_loss = fake_loss + real_loss + gradient_penalty
             self.log("D_loss", d_loss, prog_bar=False)
-            self.log("D_loss_1", fake_loss, prog_bar=False)
-            self.log("D_loss_2", real_loss, prog_bar=False)
             return d_loss
 
-            # B ---------------------------------------------------------
-            # self.generator.eval()
-            # self.discriminator.train()
-            # logits_sub = self.sub_encoderdecoder(batch)
-            # z_sub_real = logits_sub["tgt_z"]
-            # logits_main = self.main_encoderdecoder(batch)
-            # z_main_real = logits_main["tgt_z"]
-            # z_real = torch.cat([z_sub_real, z_main_real], dim=1).detach()
-            # valid = torch.ones(self.batch_size, device=batch["node_data"].device)
-            # real_loss = self.adversarial_loss(self.discriminator(z_real), valid)
-            #
-            # n = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
-            # generated_z = self.generator(n).detach()
-            # fake = torch.zeros(self.batch_size, device=batch["node_data"].device)
-            # fake_loss = self.adversarial_loss(self.discriminator(generated_z), fake)
-            #
-            # gradient_penalty = self.calc_gradient_penalty(self.discriminator, z_real, generated_z)
-            #
-            # d_loss = real_loss + fake_loss + gradient_penalty
-            # self.log("d_loss_real", real_loss, prog_bar=True)
-            # self.log("d_loss_fake", fake_loss, prog_bar=True)
-            # return d_loss
-
-        # train generator
+        # step 2. train generator
         if optimizer_idx == 1:
-            # A ---------------------------------------------------------
             self.generator.train()
             self.discriminator.eval()
             # generate fake z
-            # n = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
-            # generated_z = self.generator(n)
             n_1 = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
             n_2 = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
-            generated_z = self.generator(n_1, n_2)
+            z_fake = self.generator(n_1, n_2)
 
             # ground truth result (ie: all fake)
             one = torch.ones([1], device=batch["node_data"].device)
             mone = -1 * one
-            logits_fake = self.discriminator(generated_z)
+            logits_fake = self.discriminator(z_fake)
             logits_fake = logits_fake.mean(dim=0, keepdim=True)
             g_loss = logits_fake * mone
             self.log("G_loss", g_loss, prog_bar=False)
             return g_loss
 
-            # B ---------------------------------------------------------
-            # n = torch.randn(self.batch_size, self.dim_n, device=batch["node_data"].device)
-            # generated_z = self.generator(n)
-            # valid = torch.ones(self.batch_size, device=batch["node_data"].device)
-            # g_loss = self.adversarial_loss(self.discriminator(generated_z), valid)
-            # self.log("g_loss_fake", g_loss, prog_bar=True)
-            # return g_loss
-
 
     def configure_optimizers(self):
-        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.00005, betas=(0.5, 0.9))  #default 0.5 0.9
-        opt_g = torch.optim.Adam(self.generator.parameters(), lr=0.00005, betas=(0.5, 0.9))
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.0001, betas=(0.5, 0.9))  #default 0.5 0.9
+        opt_g = torch.optim.Adam(self.generator.parameters(), lr=0.0001, betas=(0.5, 0.9))
         return (
             {'optimizer': opt_d, 'frequency': 2},
             {'optimizer': opt_g, 'frequency': 1}
         )
 
-    def test_step(self, batch, batch_idx):
-        self.main_encoderdecoder.eval()
-        self.sub_encoderdecoder.eval()
+    def generate(self, n_samples, batch_size):
+        self.primitive_encoder.eval()
+        self.feature_encoder.eval()
+        self.seq_decoder.eval()
         self.generator.eval()
+        for batch_index in range(n_samples // batch_size):
+            # sample noise
+            n_1 = torch.randn(batch_size, self.dim_n, device=self.device)
+            n_2 = torch.randn(batch_size, self.dim_n, device=self.device)
+            generated_z = self.generator(n_1, n_2)
 
-        # 1. sample noise
-        # n_1 = torch.randn(batch["node_data"].size()[0] self.dim_n, device=batch["node_data"].device)
-        # n_2 = torch.randn(batch["node_data"].size()[0], self.dim_n, device=batch["node_data"].device)
-        # generated_z = self.generator(n_1, n_2)
+            output = self.seq_decoder(generated_z)
+            # output predicted result-------------------------------------------------------------------
+            commands_primitive = torch.argmax(torch.softmax(output['commands_primitive'], dim=-1), dim=-1)  # (N, S)
+            args_primitive = torch.argmax(torch.softmax(output['args_primitive'], dim=-1), dim=-1) - 1  # (N, S, n_args)
+            commands_primitive = commands_primitive.long().detach().cpu().numpy()  # (N, S)
+            args_primitive = args_primitive.long().detach().cpu().numpy()  # (N, S, n_args)
 
-        # 2. main feature + random sample sub feature
-        logits_main = self.main_encoderdecoder(batch)
-        logits_sub = self.sub_encoderdecoder(batch)
-        z_real = torch.cat([logits_main["tgt_z"], logits_sub["tgt_z"]], dim=1)
-        z_main_real = logits_main["tgt_z"]
-        for i in range(1, z_main_real.size()[0]):
-            z_main_real[i] = z_main_real[0]
-        n_1 = torch.randn(z_main_real.size()[0], self.dim_n, device=batch["node_data"].device)
-        n_2 = torch.randn(z_main_real.size()[0], self.dim_n, device=batch["node_data"].device)
-        generated_z = self.generator(n_1, n_2, z_main_real, True)
-        generated_z[0] = z_real[0]
+            commands_feature = torch.argmax(torch.softmax(output['commands_feature'], dim=-1), dim=-1)  # (N, S)
+            args_feature = torch.argmax(torch.softmax(output['args_feature'], dim=-1), dim=-1) - 1  # (N, S, n_args)
+            commands_feature = commands_feature.long().detach().cpu().numpy()  # (N, S)
+            args_feature = args_feature.long().detach().cpu().numpy()  # (N, S, n_args)
 
-        # 3. Interpolation
-        # logits_main = self.main_encoderdecoder(batch)
-        # logits_sub = self.sub_encoderdecoder(batch)
-        # generated_z = torch.cat([logits_main["tgt_z"], logits_sub["tgt_z"]], dim=1)
-        # for i in range(generated_z.size()[0]-2):
-        #     generated_z[i+1] = (1.0 - 0.1*(i+1))*generated_z[0] + 0.1*(i+1)*generated_z[-1]
+            # 将结果转为json文件--------------------------------------------------------------------------
+            for i in range(batch_size):
+                end_pos = MAX_N_MAIN - np.sum((commands_primitive[i][:] == EOS_IDX).astype(np.int))
+                primitive_type = commands_primitive[i][:end_pos + 1]  # (Seq)
+                primitive_param = args_primitive[i][:end_pos + 1][:]  # (Seq, n_args)
 
-        z_main, z_sub = generated_z.chunk(2, dim=1)
-        z_main = torch.unsqueeze(z_main, dim=0)
-        z_sub = torch.unsqueeze(z_sub, dim=0)
+                end_pos = MAX_N_SUB - np.sum((commands_feature[i][:] == EOS_IDX).astype(np.int))
+                feature_type = commands_feature[i][:end_pos + 1]  # (Seq)
+                feature_param = args_feature[i][:end_pos + 1][:]  # (Seq, n_args)
 
-        logits_main = self.main_encoderdecoder.decoder(z_main)
-        logits_sub = self.sub_encoderdecoder.decoder(z_sub)
-
-        #结果处理------------------------------------------------------------------------------------
-        out_main_commands = torch.argmax(torch.softmax(logits_main['command_logits'], dim=-1), dim=-1) # (N, S)     
-        out_main_args = torch.argmax(torch.softmax(logits_main['args_logits'], dim=-1), dim=-1) - 1    # (N, S, n_args)  
-        out_main_commands = out_main_commands.long().detach().cpu().numpy()  # (N, S)
-        out_main_args = out_main_args.long().detach().cpu().numpy()  # (N, S, n_args)
-        
-        out_sub_commands = torch.argmax(torch.softmax(logits_sub['command_logits'], dim=-1), dim=-1) # (N, S)     
-        out_sub_args = torch.argmax(torch.softmax(logits_sub['args_logits'], dim=-1), dim=-1) - 1    # (N, S, n_args)  
-        out_sub_commands = out_sub_commands.long().detach().cpu().numpy()  # (N, S)
-        out_sub_args = out_sub_args.long().detach().cpu().numpy()  # (N, S, n_args)
-             
-        #将结果转为json文件--------------------------------------------------------------------------
-        batch_size = np.size(out_main_commands, 0)
-        for i in range(batch_size):
-            #计算每个commands的实际长度
-            end_index = MAX_N_MAIN - np.sum((out_main_commands[i][:] == EOS_IDX).astype(np.int))        
-            #masked出实际commands
-            main_commands = out_main_commands[i][:end_index+1] # (Seq)            
-            #masked出实际args
-            main_args = out_main_args[i][:end_index+1][:] # (Seq, n_args)    
-            
-            end_index = MAX_N_SUB - np.sum((out_sub_commands[i][:] == EOS_IDX).astype(np.int))        
-            #masked出实际commands
-            sub_commands = out_sub_commands[i][:end_index+1] # (Seq)            
-            #masked出实际args
-            sub_args = out_sub_args[i][:end_index+1][:] # (Seq, n_args)   
-            
-            file_index = batch_idx * batch_size + i
-            vec_to_json(main_commands, main_args, sub_commands, sub_args, file_index)
+                file_name = "generation_{}.json".format(str(batch_size * batch_index + i))
+                file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                         "results/predicted_seq")
+                if not os.path.exists(file_path): os.makedirs(file_path)
+                vec_to_json(primitive_type, primitive_param, feature_type, feature_param,
+                            os.path.join(file_path, file_name))

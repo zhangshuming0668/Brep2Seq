@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from fairseq.modules import FairseqDropout, LayerDropModuleList, LayerNorm
 from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
-
 from .layers.multihead_attention import MultiheadAttention
 from .layers.brep_encoder_layer import GraphEncoderLayer, GraphNodeFeature, GraphAttnBias
 

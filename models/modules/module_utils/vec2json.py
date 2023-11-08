@@ -1,26 +1,15 @@
 # -*- coding: utf-8 -*-
-import os
-import shutil
-import pathlib
-import glob
-
-import torch
-import dgl
-from dgl.data.utils import save_graphs
 import json
-from scipy.sparse import csr_matrix
-import numpy as np
-
 import sys
 sys.path.append('..')
 from .macro import *
 
-def vec_to_json(main_commands, main_param, sub_commands, sub_param, file_name):
+def vec_to_json(main_commands, main_param, sub_commands, sub_param, output_file):
     json_root = {}
     main_feature = []
     sub_feature = []
     
-    #提取主特征
+    # output primitives
     for i in range(np.size(main_commands, 0)):
         a_feature = {}
         if(main_commands[i] == BOX_IDX):
@@ -95,7 +84,7 @@ def vec_to_json(main_commands, main_param, sub_commands, sub_param, file_name):
             a_feature["param"] = feature_param
             main_feature.append(a_feature)
 
-    #提取辅特征
+    # output features
     for i in range(np.size(sub_commands, 0)):
         a_feature = {}
         if(sub_commands[i] == RECT_SLOT_IDX):
@@ -427,26 +416,6 @@ def vec_to_json(main_commands, main_param, sub_commands, sub_param, file_name):
 
     json_root["main_feature"] = main_feature
     json_root["sub_feature"] = sub_feature
-    
-    output_path = pathlib.Path("/home/zhang/datasets_v3_1_quater/val")
-    # file_name = "rebuild_" + str(index) + ".json"
-    file_name = file_name + ".json"
-    binfile_path = os.path.join(output_path,file_name)
 
-    with open(binfile_path,'w',encoding='utf-8')as fp:
+    with open(output_file,'w',encoding='utf-8')as fp:
         json.dump(json_root,fp, indent=4)
-        
-
-def output_z(z_main, z_sub):
-    json_root = {}
-    json_root["main_feature"] = z_main.tolist()
-    json_root["sub_feature"] = z_sub.tolist()
-    
-    output_path = pathlib.Path("/home/zhang/datasets_v3_1_quater/val")
-    file_name = "latent_z.json"
-    binfile_path = os.path.join(output_path,file_name)
-
-    with open(binfile_path,'w',encoding='utf-8')as fp:
-        json.dump(json_root,fp, indent=4)
-        
-        
