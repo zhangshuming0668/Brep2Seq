@@ -46,7 +46,7 @@ PAD_VAL = -1
 N_MAIN_COMMANDS = 5
 N_SUB_COMMANDS = 24
 N_ARGS_MAIN = 11  # main_feature parameters: L1, L2, L3, E, Tx, Ty, Tz, Q0, Q1, Q2, Q3
-N_ARGS_SUB = 12   # sub_feature parameters:  X1, Y1, Z1, X2, Y2, Z2, W, L, R, A, W1, D
+N_ARGS_SUB = 11   # sub_feature parameters:  X1, Y1, Z1, X2, Y2, Z2, W, L, R, W1, D
 
 MAIN_SOL_VEC = np.array([SOL_IDX, *([PAD_VAL] * N_ARGS_MAIN)])
 MAIN_EOS_VEC = np.array([EOS_IDX, *([PAD_VAL] * N_ARGS_MAIN)])
@@ -66,31 +66,31 @@ MAIN_CMD_ARGS_MASK = np.array([[*[0] * N_ARGS_MAIN],  # SOL
                             
 SUB_CMD_ARGS_MASK = np.array([[ *[0]*N_ARGS_SUB],  # SOL
                               [ *[0]*N_ARGS_SUB],  # EOS
-                              #X1 Y1 Z1 X2 Y2 Z2 W  L  R  A  W1 D  
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],  # rect_slot
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],  # tri_slot
-                              [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],  # cir_slot
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0],  # rect_psg
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0],  # tri_psg
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0],  # hexa_psg
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0],  # hole
-                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],  # rect_step
-                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1],  # tside_step
-                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],  # slant_step                         
-                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],  # rect_b_step
-                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],  # tri_step
-                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],  # cir_step
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],  # rect_b_slot                         
-                              [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],  # cir_b_slot
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],  # u_b_slot
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0],  # rect_pkt
-                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0],  # key_pkt
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0],  # tri_pkt
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0],  # hexa_pkt
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0],  # o_ring
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0],  # b_hole
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0],  # chamfer
-                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0],  # fillet                              
+                              #X1 Y1 Z1 X2 Y2 Z2 W  L  R  W1 D
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # rect_slot
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # tri_slot
+                              [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],  # cir_slot
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # rect_psg
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # tri_psg
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # hexa_psg
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # hole
+                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],  # rect_step
+                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1],  # tside_step
+                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],  # slant_step
+                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],  # rect_b_step
+                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],  # tri_step
+                              [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],  # cir_step
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # rect_b_slot
+                              [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],  # cir_b_slot
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # u_b_slot
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # rect_pkt
+                              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],  # key_pkt
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # tri_pkt
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # hexa_pkt
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # o_ring
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # b_hole
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # chamfer
+                              [1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0],  # fillet
                              ])
 
 MAX_N_MAIN = 10 # maximum number of main_feature
