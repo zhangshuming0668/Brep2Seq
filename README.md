@@ -21,7 +21,7 @@ conda activate brep2seq
 
 ### Data preparation
 
-You can download the synthetic CAD models dataset from [this link](https://github.com/zhangshuming0668/Brep2Seq/tree/main/dataset).
+You can download the synthetic CAD models dataset from [this link](https://www.scidb.cn/en/detail?dataSetId=87b0695c592849618d3d22d0ab480849&version=V1).
 
 ## Training
 
